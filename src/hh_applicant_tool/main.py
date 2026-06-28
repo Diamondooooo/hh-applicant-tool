@@ -63,7 +63,7 @@ class BaseNamespace(argparse.Namespace):
 class HHApplicantTool(MegaTool):
     """Утилита для автоматизации действий соискателя на сайте hh.ru.
 
-    Исходники и предложения: <https://github.com/s3rgeym/hh-applicant-tool>
+    Исходники и предложения: <https://github.com/Diamondooooo/hh-applicant-tool>
 
     Группа поддержки: <https://t.me/hh_applicant_tool>
     """

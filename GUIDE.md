@@ -4,7 +4,7 @@
 
 ```bash
 # 1. Склонировать и поставить зависимости
-git clone https://github.com/it-ptitsa/hh-applicant-tool
+git clone https://github.com/Diamondooooo/hh-applicant-tool
 cd hh-applicant-tool
 python3 -m venv .venv
 .venv/bin/pip install -e '.[playwright,pillow]'
@@ -41,7 +41,7 @@ nano letter.txt
 ## 2. Установка
 
 ```bash
-git clone https://github.com/s3rgeym/hh-applicant-tool
+git clone https://github.com/Diamondooooo/hh-applicant-tool
 cd hh-applicant-tool
 
 # Создаём локальное виртуальное окружение
