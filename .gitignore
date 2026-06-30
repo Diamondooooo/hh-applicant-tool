@@ -80,8 +80,10 @@ cython_debug/
 Session.vim
 
 # AI assistants / IDE agents
+# скил hh-clicker должен ехать в репозиторий (инлайн-комменты в .gitignore ломают паттерн!)
 .claude/*
-!.claude/skills/          # скил hh-clicker должен ехать в репозиторий
+!.claude/skills/
+!.claude/skills/**
 CLAUDE.md
 .serena/
 .codex/
