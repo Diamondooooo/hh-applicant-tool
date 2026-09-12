@@ -13,7 +13,6 @@ from ..utils.date import parse_api_datetime
 from ..utils.string import rand_text
 
 if TYPE_CHECKING:
-    from ..ai.openai import ChatOpenAI
     from ..main import HHApplicantTool
 
 
@@ -105,7 +104,8 @@ class Operation(BaseOperation):
     def run(self, tool: HHApplicantTool, args: Namespace) -> None:
         self.tool = tool
         self.api_client = tool.api_client
-        self.resume_id = tool.first_resume_id()
+        #self.resume_id = tool.first_resume_id() #вместо id первого резюме берем id из аргументов
+        self.resume_id = args.resume_id
         self.reply_message = args.reply_message or tool.config.get(
             "reply_message"
         )
@@ -114,12 +114,16 @@ class Operation(BaseOperation):
         self.only_invitations = args.only_invitations
 
         self.message_prompt = args.message_prompt
-        self.cover_letter_ai = (tool.get_cover_letter_ai(args.system_prompt) if args.use_ai else None)
+        self.cover_letter_ai = (
+            tool.get_cover_letter_ai(args.system_prompt)
+            if args.use_ai
+            else None
+        )
         self.period = args.period
         self._resume_ctx_cache: dict[str, str] = {}
 
         logger.debug(f"{self.reply_message = }")
-        self.reply_employers()
+        return self.reply_employers()
 
     def _build_resume_context(self, resume: dict) -> str:
         """Собирает краткое содержимое резюме (должность, навыки, опыт с
@@ -152,13 +156,27 @@ class Operation(BaseOperation):
         self._resume_ctx_cache[rid] = ctx
         return ctx
 
+    def _load_manual_skip(self) -> set[str]:
+        """Вакансии из ручного глобального ЧС (skipped_vacancies с resume_id='')
+        — их чаты бот НЕ трогает: по ним пользователь ведёт переписку сам.
+        Добавить вакансию: INSERT в skipped_vacancies с resume_id=''."""
+        try:
+            return {
+                str(m.vacancy_id)
+                for m in self.tool.storage.skipped_vacancies.find(resume_id="")
+            }
+        except Exception as ex:
+            logger.warning("Не смог загрузить ручной ЧС вакансий: %s", ex)
+            return set()
+
     def reply_employers(self):
         blacklist = set(self.tool.get_blacklisted())
+        manual_skip = self._load_manual_skip()
         me: datatypes.User = self.tool.get_me()
         resumes = self.tool.get_resumes()
         resumes = (
             list(filter(lambda x: x["id"] == self.resume_id, resumes))
-            if self.resume_id
+            if self.resume_id is not None # добавляем проверку на пустоту
             else resumes
         )
         resumes = list(
@@ -166,13 +184,22 @@ class Operation(BaseOperation):
                 lambda resume: resume["status"]["id"] == "published", resumes
             )
         )
-        self._reply_chats(user=me, resumes=resumes, blacklist=blacklist)
+        if not resumes:
+            logger.error("Нет опубликованных резюме")
+            return 1
+        return self._reply_chats(
+            user=me,
+            resumes=resumes,
+            blacklist=blacklist,
+            manual_skip=manual_skip,
+        )
 
     def _reply_chats(
         self,
         user: datatypes.User,
         resumes: list[datatypes.Resume],
         blacklist: set[str],
+        manual_skip: set[str],
     ) -> None:
         resume_map = {r["id"]: r for r in resumes}
 
@@ -190,7 +217,12 @@ class Operation(BaseOperation):
                 # except RepositoryError as e:
                 #     logger.exception(e)
 
-                if not (resume := resume_map.get(negotiation["resume"]["id"])):
+                if "resume" not in negotiation:
+                    continue
+
+                if not (
+                    resume := resume_map.get(negotiation["resume"].get("id"))
+                ):
                     continue
 
                 updated_at = parse_api_datetime(negotiation["updated_at"])
@@ -214,6 +246,14 @@ class Operation(BaseOperation):
                 vacancy = negotiation["vacancy"]
                 employer = vacancy.get("employer") or {}
                 salary = vacancy.get("salary") or {}
+
+                # Ручной ЧС по ВАКАНСИИ: чат ведёт сам пользователь — бот молчит.
+                if str(vacancy.get("id")) in manual_skip:
+                    print(
+                        "🙅 Пропускаю чат — вакансия в ручном ЧС (ведёшь сам):",
+                        vacancy.get("alternate_url"),
+                    )
+                    continue
 
                 if employer.get("id") in blacklist:
                     print(
