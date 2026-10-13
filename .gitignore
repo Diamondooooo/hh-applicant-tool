@@ -89,3 +89,12 @@ CLAUDE.md
 .codex/
 uv.lock
 poetry.lock
+
+# Сервер: данные аккаунта, секреты, логи, бэкапы - не в git
+apply.env
+digest.env
+*.log
+*.bak
+*.acc3bak
+*.disabled
+config_*_bak/

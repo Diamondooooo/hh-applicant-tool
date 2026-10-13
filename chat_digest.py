@@ -42,7 +42,7 @@ RULES: list[tuple[str, str, re.Pattern]] = [
         "✍️ Зовут в личку (Telegram/телефон/почта)",
         re.compile(
             # Работодатель уводит контакт из hh во внешний канал. Пропустить
-            # это — потерять живой контакт: именно так вышло со StudyWorld.
+            # это — потерять живой контакт, такие кейсы были.
             r"@[\w.]{3,}|"  # @username
             r"\bt\.me/|"
             r"телеграм|телеграмм|telegram|"
@@ -201,7 +201,7 @@ def collect(api: Api, hours: int) -> list[dict]:
                 > datetime.fromisoformat(last["created_at"])
             )
             # «Зовут в личку» — действие ВСЕГДА на тебе (написать в TG/позвонить),
-            # даже если бот ответил в hh-чате «напишу». Иначе StudyWorld-кейс:
+            # даже если бот ответил в hh-чате «напишу». Иначе кейс:
             # бот пообещал за тебя, а ты не в курсе.
             if hit[0] == "contact":
                 answered = False
@@ -214,7 +214,7 @@ def collect(api: Api, hours: int) -> list[dict]:
                     "vacancy": vacancy.get("name") or "—",
                     "url": vacancy.get("alternate_url") or item.get("url") or "",
                     # Рабочая ссылка на чат — /chat/{chat_id}. chat_id ≠ id
-                    # переговоров (у StudyWorld id=5416332750, chat_id=5461495889).
+                    # переговоров (id вакансии и chat_id различаются).
                     # Если chat_id вдруг нет — открываем список откликов, а не
                     # ведём на битый /negotiations/item/.
                     "chat_url": (
